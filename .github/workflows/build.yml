@@ -7,14 +7,29 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  deploy-pages:
+  enable-pages:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    
+    steps:
+      - name: Enable GitHub Pages
+        run: |
+          curl -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/pages \
+            -d '{"source":{"branch":"main","path":"/"}}' \
+            || echo "Pages may already be enabled"
+
+  deploy-pages:
+    needs: enable-pages
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -25,6 +40,7 @@ jobs:
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        continue-on-error: true
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -37,7 +53,6 @@ jobs:
 
   build-apk:
     runs-on: ubuntu-latest
-    needs: deploy-pages
     
     steps:
       - name: Checkout

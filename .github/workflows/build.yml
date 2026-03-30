@@ -48,28 +48,41 @@ jobs:
         with:
           node-version: '20'
       
-      - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli
-      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: Create Bubblewrap config
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+      
+      - name: Generate Keystore
         run: |
-          cat > bubblewrap-config.json << 'EOF'
+          keytool -genkey -v -keystore keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias journal-key \
+            -storepass android -keypass android \
+            -dname "CN=Journal App, OU=Development, O=Daily Journal, L=Unknown, ST=Unknown, C=US"
+      
+      - name: Try Bubblewrap Build
+        id: bubblewrap
+        continue-on-error: true
+        run: |
+          mkdir -p twa
+          cat > twa/bubblewrap-config.json << 'EOF'
           {
             "appVersionName": "1.0.0",
             "appVersionCode": 1,
             "applicationId": "com.dailyjournal.app",
             "appName": "Daily Journal",
+            "launcherName": "Daily Journal",
             "display": "standalone",
             "fallbackType": "customtabs",
             "enableNotifications": true,
             "startUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/",
-            "iconUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/icon-512.png",
+            "iconUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/icons/icon-512.svg",
             "splashScreenFadeOutDuration": 300,
             "enableSiteSettingsShortcut": true,
             "shortcuts": [],
@@ -82,34 +95,37 @@ jobs:
             "appBuild": 1,
             "retainedBundles": [],
             "signing": {
-              "keyStoreUrl": "file:///home/runner/work/keystore.jks",
+              "keyStoreUrl": "file:///home/runner/work/journal/journal/keystore.jks",
               "keyStorePassword": "android",
               "keyPassword": "android"
             },
-            "additionalTrustedOrigins": []
+            "additionalTrustedOrigins": [],
+            "host": "${{ github.repository_owner }}.github.io",
+            "fullScopeUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/",
+            "themeColor": "#1a1a2e",
+            "backgroundColor": "#0f0f1a",
+            "navigationColor": "#1a1a2e",
+            "navigationColorDark": "#0f0f1a",
+            "navigationDividerColor": "#1a1a2e",
+            "navigationDividerColorDark": "#0f0f1a"
           }
           EOF
-      
-      - name: Generate Keystore
-        run: |
-          keytool -genkey -v -keystore keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias journal-key \
-            -storepass android -keypass android \
-            -dname "CN=Journal App, OU=Development, O=Daily Journal, L=Unknown, ST=Unknown, C=US"
-      
-      - name: Initialize Bubblewrap
-        run: |
-          bubblewrap init --manifest https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.json --directory twa --skipValidation
-        continue-on-error: true
-      
-      - name: Build TWA
-        run: |
+          cp twa/bubblewrap-config.json twa/twa-manifest.json
           cd twa
-          bubblewrap build --skipValidation
-        continue-on-error: true
+          echo -e "n\n$JAVA_HOME\n" | timeout 120 bubblewrap build --skipValidation 2>&1
+      
+      - name: Fallback - Build WebView APK
+        if: steps.bubblewrap.outcome == 'failure'
+        run: |
+          echo "Bubblewrap failed, building WebView APK..."
+          bash build-webview-apk.sh
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: journal-app-apk
-          path: twa/app-release-signed.apk
-          if-no-files-found: warn
+          path: |
+            twa/app-release-signed.apk
+            daily-journal.apk
+            android-app/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error

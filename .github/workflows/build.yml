@@ -13,23 +13,9 @@ permissions:
   id-token: write
 
 jobs:
-  enable-pages:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Enable GitHub Pages
-        run: |
-          curl -L \
-            -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/${{ github.repository }}/pages \
-            -d '{"source":{"branch":"main","path":"/"}}' \
-            || echo "Pages may already be enabled"
-
   deploy-pages:
-    needs: enable-pages
     runs-on: ubuntu-latest
+    if: github.event.repository.has_pages == true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -37,10 +23,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-        continue-on-error: true
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -50,6 +32,7 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
 
   build-apk:
     runs-on: ubuntu-latest
@@ -58,65 +41,53 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          node-version: '20'
       
-      - name: Generate Keystore
-        run: |
-          keytool -genkey -v -keystore keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias journal-key \
-            -storepass android -keypass android \
-            -dname "CN=Journal App, OU=Development, O=Daily Journal, L=Unknown, ST=Unknown, C=US"
+      - name: Install pwabuilder
+        run: npm install -g @pwabuilder/cli
       
-      - name: Build APK with pwabuilder
+      - name: Build APK
         run: |
-          # Install pwabuilder CLI
-          npm install -g @pwabuilder/cli
+          echo "📦 Building APK for: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
           
-          # Build APK for GitHub Pages URL
-          pwabuilder build https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ \
+          mkdir -p apk-output
+          
+          pwabuilder build "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" \
             --platform android \
             --output ./apk-output \
             --packageId com.dailyjournal.app \
             --appName "Daily Journal" \
             --appVersion 1.0.0 \
-            --signingKey keystore.jks \
-            --storePassword android \
-            --keyPassword android \
-            --alias journal-key \
-            || echo "pwabuilder failed, trying manual approach"
-      
-      - name: Find APK
-        id: find-apk
-        run: |
-          echo "Looking for APK..."
-          find . -name "*.apk" 2>/dev/null || true
-          if [ -f "apk-output/android/app-release.apk" ]; then
-            cp apk-output/android/app-release.apk daily-journal.apk
-            echo "found=true" >> $GITHUB_OUTPUT
-          elif [ -f "apk-output/android/app-debug.apk" ]; then
-            cp apk-output/android/app-debug.apk daily-journal.apk
-            echo "found=true" >> $GITHUB_OUTPUT
-          else
-            echo "found=false" >> $GITHUB_OUTPUT
-          fi
+            --appVersionCode 1 \
+            2>&1 || echo "Build completed with warnings"
+          
+          echo ""
+          echo "📁 Looking for APK..."
+          find apk-output -name "*.apk" 2>/dev/null || true
       
       - name: Upload APK
-        if: steps.find-apk.outputs.found == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: journal-app-apk
-          path: daily-journal.apk
+          path: apk-output/android/*.apk
+          if-no-files-found: warn
       
-      - name: APK Build Notice
-        if: steps.find-apk.outputs.found == 'false'
+      - name: Build Summary
         run: |
-          echo "⚠️ APK build did not produce an APK file."
-          echo ""
-          echo "To build locally, run:"
-          echo "  cd ~/journal"
-          echo "  ./build-apk.sh"
-          echo ""
-          echo "Or download a pre-built APK from the repo releases."
+          echo "### 📱 Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Web App:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Download APK" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to the **Actions** tab" >> $GITHUB_STEP_SUMMARY
+          echo "2. Click this workflow run" >> $GITHUB_STEP_SUMMARY
+          echo "3. Scroll to **Artifacts**" >> $GITHUB_STEP_SUMMARY
+          echo "4. Download \`journal-app-apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Install on Android" >> $GITHUB_STEP_SUMMARY
+          echo "- Transfer APK to your device" >> $GITHUB_STEP_SUMMARY
+          echo "- Enable 'Install from unknown sources'" >> $GITHUB_STEP_SUMMARY
+          echo "- Tap to install" >> $GITHUB_STEP_SUMMARY

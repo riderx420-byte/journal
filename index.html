@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Daily Journal</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📔</text></svg>">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0f0f1a;
+      --bg-secondary: #1a1a2e;
+      --bg-card: #16213e;
+      --accent: #e94560;
+      --accent-soft: #e9456033;
+      --text-primary: #f0f0f0;
+      --text-secondary: #a0a0a0;
+      --border: #2a2a4a;
+      --success: #4ade80;
+      --gradient-1: #e94560;
+      --gradient-2: #0f3460;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 30px 0;
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 300;
+      letter-spacing: 3px;
+      background: linear-gradient(135deg, var(--gradient-1), #ff6b8a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .header .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+    }
+
+    .header .date-display {
+      margin-top: 15px;
+      font-size: 1.1rem;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* Status Card */
+    .status-card {
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
+      border-radius: 20px;
+      padding: 25px;
+      margin-bottom: 25px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .status-card .status-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .status-card .status-text {
+      font-size: 1.3rem;
+      font-weight: 500;
+    }
+
+    .status-card .status-text.done {
+      color: var(--success);
+    }
+
+    .status-card .status-text.pending {
+      color: var(--accent);
+    }
+
+    /* Textarea */
+    .journal-input {
+      width: 100%;
+      min-height: 200px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 15px;
+      padding: 20px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      line-height: 1.7;
+      resize: vertical;
+      transition: all 0.3s ease;
+      margin-bottom: 20px;
+    }
+
+    .journal-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-soft);
+    }
+
+    .journal-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+      color: white;
+      box-shadow: 0 4px 15px var(--accent-soft);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px var(--accent-soft);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+
+    .btn-group .btn {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    /* Entries List */
+    .entries-section {
+      margin-top: 40px;
+    }
+
+    .entries-section h2 {
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .entry-card {
+      background: var(--bg-card);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .entry-card:hover {
+      border-color: var(--accent);
+      transform: translateX(5px);
+    }
+
+    .entry-card .entry-date {
+      font-size: 0.85rem;
+      color: var(--accent);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .entry-card .entry-preview {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .entry-card .entry-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .entry-card:hover .entry-actions {
+      opacity: 1;
+    }
+
+    .entry-actions button {
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .entry-actions .btn-view {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    .entry-actions .btn-delete {
+      background: #ef444433;
+      color: #ef4444;
+    }
+
+    .entry-actions .btn-delete:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+    }
+
+    .modal h3 {
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      color: var(--accent);
+    }
+
+    .modal .modal-date {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    .modal .modal-content {
+      line-height: 1.8;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+    }
+
+    .modal .modal-close {
+      margin-top: 20px;
+      width: 100%;
+    }
+
+    /* Notification Permission Banner */
+    .notification-banner {
+      background: linear-gradient(135deg, var(--accent-soft), transparent);
+      border: 1px solid var(--accent);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 25px;
+      display: none;
+    }
+
+    .notification-banner.active {
+      display: block;
+    }
+
+    .notification-banner p {
+      margin-bottom: 15px;
+      color: var(--text-secondary);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 15px 30px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease;
+      z-index: 2000;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.success {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .toast.error {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state .icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .empty-state p {
+      font-size: 1.1rem;
+    }
+
+    /* Stats */
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      padding: 20px;
+      background: var(--bg-card);
+      border-radius: 15px;
+      margin-bottom: 25px;
+      border: 1px solid var(--border);
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat .stat-value {
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .stat .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 5px;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .header h1 {
+        font-size: 1.5rem;
+      }
+
+      .btn-group {
+        flex-direction: column;
+      }
+
+      .btn-group .btn {
+        min-width: 100%;
+      }
+
+      .stats {
+        flex-direction: column;
+        gap: 20px;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>✦ Daily Journal ✦</h1>
+      <p class="subtitle">Reflect on your day</p>
+      <p class="date-display" id="dateDisplay"></p>
+    </header>
+
+    <!-- Notification Banner -->
+    <div class="notification-banner" id="notificationBanner">
+      <p>🔔 Enable notifications to get reminded at 9 PM to journal</p>
+      <button class="btn btn-primary" onclick="requestNotificationPermission()">Enable Notifications</button>
+    </div>
+
+    <!-- Status Card -->
+    <div class="status-card">
+      <p class="status-title">Today's Status</p>
+      <p class="status-text" id="statusText">Not journaled yet</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <p class="stat-value" id="totalEntries">0</p>
+        <p class="stat-label">Total Entries</p>
+      </div>
+      <div class="stat">
+        <p class="stat-value" id="streakCount">0</p>
+        <p class="stat-label">Day Streak</p>
+      </div>
+      <div class="stat">
+        <p class="stat-value" id="wordCount">0</p>
+        <p class="stat-label">Words Written</p>
+      </div>
+    </div>
+
+    <!-- Journal Input -->
+    <textarea 
+      class="journal-input" 
+      id="journalInput" 
+      placeholder="How was your day? What are you grateful for? What did you learn?..."
+    ></textarea>
+
+    <!-- Action Buttons -->
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveEntry()">
+        <span>💾</span> Save Entry
+      </button>
+      <button class="btn btn-secondary" onclick="exportCSV()">
+        <span>📤</span> Export CSV
+      </button>
+    </div>
+
+    <!-- Entries List -->
+    <section class="entries-section">
+      <h2>Previous Entries</h2>
+      <div id="entriesList"></div>
+    </section>
+  </div>
+
+  <!-- View Entry Modal -->
+  <div class="modal-overlay" id="viewModal">
+    <div class="modal">
+      <h3 id="modalDate"></h3>
+      <p class="modal-date" id="modalDay"></p>
+      <div class="modal-content" id="modalContent"></div>
+      <button class="btn btn-secondary modal-close" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Constants
+    const STORAGE_KEY = 'dailyJournalEntries';
+    const NOTIFICATION_TIME = 21; // 9 PM
+
+    // State
+    let entries = [];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadEntries();
+      updateDateDisplay();
+      updateStatus();
+      updateStats();
+      renderEntries();
+      checkNotificationPermission();
+      scheduleNotification();
+    });
+
+    // Load entries from localStorage
+    function loadEntries() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      entries = stored ? JSON.parse(stored) : [];
+    }
+
+    // Save entries to localStorage
+    function saveEntries() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+
+    // Update date display
+    function updateDateDisplay() {
+      const now = new Date();
+      const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      };
+      document.getElementById('dateDisplay').textContent = now.toLocaleDateString('en-US', options);
+    }
+
+    // Check if today's entry exists
+    function hasTodayEntry() {
+      const today = getTodayString();
+      return entries.some(e => e.date === today);
+    }
+
+    // Get today's date string (YYYY-MM-DD)
+    function getTodayString() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    // Update status
+    function updateStatus() {
+      const statusEl = document.getElementById('statusText');
+      if (hasTodayEntry()) {
+        statusEl.textContent = '✓ Journal entry completed';
+        statusEl.className = 'status-text done';
+        document.getElementById('journalInput').value = '';
+      } else {
+        statusEl.textContent = 'Not journaled yet';
+        statusEl.className = 'status-text pending';
+      }
+    }
+
+    // Update stats
+    function updateStats() {
+      document.getElementById('totalEntries').textContent = entries.length;
+      document.getElementById('streakCount').textContent = calculateStreak();
+      document.getElementById('wordCount').textContent = calculateTotalWords();
+    }
+
+    // Calculate streak
+    function calculateStreak() {
+      if (entries.length === 0) return 0;
+
+      const sortedDates = [...entries]
+        .map(e => e.date)
+        .sort((a, b) => new Date(b) - new Date(a));
+
+      let streak = 0;
+      let currentDate = new Date();
+
+      for (const date of sortedDates) {
+        const expectedDate = new Date(currentDate);
+        expectedDate.setDate(expectedDate.getDate() - streak);
+        
+        if (date === expectedDate.toISOString().split('T')[0]) {
+          streak++;
+        } else if (streak === 0 && date === getTodayString()) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+
+      return streak;
+    }
+
+    // Calculate total words
+    function calculateTotalWords() {
+      return entries.reduce((total, entry) => {
+        return total + (entry.content.match(/\b\w+\b/g) || []).length;
+      }, 0);
+    }
+
+    // Save journal entry
+    function saveEntry() {
+      const input = document.getElementById('journalInput');
+      const content = input.value.trim();
+
+      if (!content) {
+        showToast('Please write something before saving', 'error');
+        return;
+      }
+
+      const today = getTodayString();
+      const existingIndex = entries.findIndex(e => e.date === today);
+
+      const entry = {
+        id: Date.now(),
+        date: today,
+        content: content,
+        timestamp: new Date().toISOString()
+      };
+
+      if (existingIndex >= 0) {
+        entries[existingIndex] = entry;
+        showToast('Entry updated successfully', 'success');
+      } else {
+        entries.unshift(entry);
+        showToast('Entry saved successfully', 'success');
+      }
+
+      saveEntries();
+      updateStatus();
+      updateStats();
+      renderEntries();
+      input.value = '';
+    }
+
+    // Render entries list
+    function renderEntries() {
+      const container = document.getElementById('entriesList');
+
+      if (entries.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📝</div>
+            <p>No entries yet. Start your journaling journey today!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = entries.map(entry => `
+        <div class="entry-card" onclick="viewEntry(${entry.id})">
+          <p class="entry-date">${formatDate(entry.date)}</p>
+          <p class="entry-preview">${escapeHtml(entry.content)}</p>
+          <div class="entry-actions" onclick="event.stopPropagation()">
+            <button class="btn-view" onclick="viewEntry(${entry.id})">View</button>
+            <button class="btn-delete" onclick="deleteEntry(${entry.id})">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // View entry modal
+    function viewEntry(id) {
+      const entry = entries.find(e => e.id === id);
+      if (!entry) return;
+
+      document.getElementById('modalDate').textContent = formatDate(entry.date);
+      document.getElementById('modalDay').textContent = getDayName(entry.date);
+      document.getElementById('modalContent').textContent = entry.content;
+      document.getElementById('viewModal').classList.add('active');
+    }
+
+    // Close modal
+    function closeModal() {
+      document.getElementById('viewModal').classList.remove('active');
+    }
+
+    // Delete entry
+    function deleteEntry(id) {
+      if (!confirm('Are you sure you want to delete this entry?')) return;
+
+      entries = entries.filter(e => e.id !== id);
+      saveEntries();
+      updateStatus();
+      updateStats();
+      renderEntries();
+      showToast('Entry deleted', 'success');
+    }
+
+    // Export to CSV
+    function exportCSV() {
+      if (entries.length === 0) {
+        showToast('No entries to export', 'error');
+        return;
+      }
+
+      const csvContent = [
+        ['Date', 'Day', 'Content'],
+        ...entries.map(entry => [
+          entry.date,
+          getDayName(entry.date),
+          `"${entry.content.replace(/"/g, '""')}"`
+        ])
+      ].map(row => row.join(',')).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `journal_export_${getTodayString()}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast('CSV exported successfully', 'success');
+    }
+
+    // Notification permission
+    function checkNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        document.getElementById('notificationBanner').classList.add('active');
+      }
+    }
+
+    function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        showToast('Notifications not supported', 'error');
+        return;
+      }
+
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          document.getElementById('notificationBanner').classList.remove('active');
+          showToast('Notifications enabled', 'success');
+          scheduleNotification();
+        }
+      });
+    }
+
+    // Schedule daily notification at 9 PM
+    function scheduleNotification() {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+      // Check every minute if it's 9 PM
+      setInterval(() => {
+        const now = new Date();
+        if (now.getHours() === NOTIFICATION_TIME && now.getMinutes() === 0) {
+          if (!hasTodayEntry()) {
+            new Notification('📔 Time to Journal!', {
+              body: 'Take a moment to reflect on your day. Your future self will thank you.',
+              icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📔</text></svg>',
+              tag: 'journal-reminder',
+              requireInteraction: true
+            });
+          }
+        }
+      }, 60000);
+    }
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Helper functions
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    function getDayName(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { weekday: 'long' });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Close modal on overlay click
+    document.getElementById('viewModal').addEventListener('click', (e) => {
+      if (e.target.id === 'viewModal') {
+        closeModal();
+      }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        saveEntry();
+      }
+    });
+
+    // Service Worker registration for PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

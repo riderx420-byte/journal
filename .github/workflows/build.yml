@@ -1,0 +1,115 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy-pages:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  build-apk:
+    runs-on: ubuntu-latest
+    needs: deploy-pages
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Create Bubblewrap config
+        run: |
+          cat > bubblewrap-config.json << 'EOF'
+          {
+            "appVersionName": "1.0.0",
+            "appVersionCode": 1,
+            "applicationId": "com.dailyjournal.app",
+            "appName": "Daily Journal",
+            "display": "standalone",
+            "fallbackType": "customtabs",
+            "enableNotifications": true,
+            "startUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/",
+            "iconUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/icon-512.png",
+            "splashScreenFadeOutDuration": 300,
+            "enableSiteSettingsShortcut": true,
+            "shortcuts": [],
+            "generatorApp": "bubblewrap-cli",
+            "webManifestUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.json",
+            "features": {},
+            "alphaDependencies": {
+              "enabled": false
+            },
+            "appBuild": 1,
+            "retainedBundles": [],
+            "signing": {
+              "keyStoreUrl": "file:///home/runner/work/keystore.jks",
+              "keyStorePassword": "android",
+              "keyPassword": "android"
+            },
+            "additionalTrustedOrigins": []
+          }
+          EOF
+      
+      - name: Generate Keystore
+        run: |
+          keytool -genkey -v -keystore keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias journal-key \
+            -storepass android -keypass android \
+            -dname "CN=Journal App, OU=Development, O=Daily Journal, L=Unknown, ST=Unknown, C=US"
+      
+      - name: Initialize Bubblewrap
+        run: |
+          bubblewrap init --manifest https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.json --directory twa --skipValidation
+        continue-on-error: true
+      
+      - name: Build TWA
+        run: |
+          cd twa
+          bubblewrap build --skipValidation
+        continue-on-error: true
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: journal-app-apk
+          path: twa/app-release-signed.apk
+          if-no-files-found: warn

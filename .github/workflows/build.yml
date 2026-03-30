@@ -58,22 +58,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      
-      - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli
       
       - name: Generate Keystore
         run: |
@@ -81,66 +70,53 @@ jobs:
             -storepass android -keypass android \
             -dname "CN=Journal App, OU=Development, O=Daily Journal, L=Unknown, ST=Unknown, C=US"
       
-      - name: Try Bubblewrap Build
-        id: bubblewrap
-        continue-on-error: true
+      - name: Build APK with pwabuilder
         run: |
-          mkdir -p twa
-          cat > twa/bubblewrap-config.json << 'EOF'
-          {
-            "appVersionName": "1.0.0",
-            "appVersionCode": 1,
-            "applicationId": "com.dailyjournal.app",
-            "appName": "Daily Journal",
-            "launcherName": "Daily Journal",
-            "display": "standalone",
-            "fallbackType": "customtabs",
-            "enableNotifications": true,
-            "startUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/",
-            "iconUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/icons/icon-512.svg",
-            "splashScreenFadeOutDuration": 300,
-            "enableSiteSettingsShortcut": true,
-            "shortcuts": [],
-            "generatorApp": "bubblewrap-cli",
-            "webManifestUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.json",
-            "features": {},
-            "alphaDependencies": {
-              "enabled": false
-            },
-            "appBuild": 1,
-            "retainedBundles": [],
-            "signing": {
-              "keyStoreUrl": "file:///home/runner/work/journal/journal/keystore.jks",
-              "keyStorePassword": "android",
-              "keyPassword": "android"
-            },
-            "additionalTrustedOrigins": [],
-            "host": "${{ github.repository_owner }}.github.io",
-            "fullScopeUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/",
-            "themeColor": "#1a1a2e",
-            "backgroundColor": "#0f0f1a",
-            "navigationColor": "#1a1a2e",
-            "navigationColorDark": "#0f0f1a",
-            "navigationDividerColor": "#1a1a2e",
-            "navigationDividerColorDark": "#0f0f1a"
-          }
-          EOF
-          cp twa/bubblewrap-config.json twa/twa-manifest.json
-          cd twa
-          echo -e "n\n$JAVA_HOME\n" | timeout 120 bubblewrap build --skipValidation 2>&1
+          # Install pwabuilder CLI
+          npm install -g @pwabuilder/cli
+          
+          # Build APK for GitHub Pages URL
+          pwabuilder build https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ \
+            --platform android \
+            --output ./apk-output \
+            --packageId com.dailyjournal.app \
+            --appName "Daily Journal" \
+            --appVersion 1.0.0 \
+            --signingKey keystore.jks \
+            --storePassword android \
+            --keyPassword android \
+            --alias journal-key \
+            || echo "pwabuilder failed, trying manual approach"
       
-      - name: Fallback - Build WebView APK
-        if: steps.bubblewrap.outcome == 'failure'
+      - name: Find APK
+        id: find-apk
         run: |
-          echo "Bubblewrap failed, building WebView APK..."
-          bash build-webview-apk.sh
+          echo "Looking for APK..."
+          find . -name "*.apk" 2>/dev/null || true
+          if [ -f "apk-output/android/app-release.apk" ]; then
+            cp apk-output/android/app-release.apk daily-journal.apk
+            echo "found=true" >> $GITHUB_OUTPUT
+          elif [ -f "apk-output/android/app-debug.apk" ]; then
+            cp apk-output/android/app-debug.apk daily-journal.apk
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
       
       - name: Upload APK
+        if: steps.find-apk.outputs.found == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: journal-app-apk
-          path: |
-            twa/app-release-signed.apk
-            daily-journal.apk
-            android-app/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
+          path: daily-journal.apk
+      
+      - name: APK Build Notice
+        if: steps.find-apk.outputs.found == 'false'
+        run: |
+          echo "⚠️ APK build did not produce an APK file."
+          echo ""
+          echo "To build locally, run:"
+          echo "  cd ~/journal"
+          echo "  ./build-apk.sh"
+          echo ""
+          echo "Or download a pre-built APK from the repo releases."
